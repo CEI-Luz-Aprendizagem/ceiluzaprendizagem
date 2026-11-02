@@ -1,0 +1,17 @@
+{
+  "name": "Professoras — Luz Aprendizagem",
+  "short_name": "Professoras",
+  "description": "Acesso das professoras à rotina e recados das crianças",
+  "start_url": "./index.html?painel=professora",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF9F0",
+  "theme_color": "#0E5C73",
+  "icons": [
+    { "src": "icons/icon-192-prof.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192-prof.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-prof.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-prof.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

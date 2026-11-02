@@ -1,0 +1,17 @@
+{
+  "name": "Administração — Luz Aprendizagem",
+  "short_name": "Administração",
+  "description": "Acesso da administração ao painel da CEI Luz Aprendizagem",
+  "start_url": "./index.html?painel=admin",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF9F0",
+  "theme_color": "#22394A",
+  "icons": [
+    { "src": "icons/icon-192-admin.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192-admin.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512-admin.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-admin.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
