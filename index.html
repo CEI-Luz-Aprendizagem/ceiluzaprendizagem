@@ -446,9 +446,22 @@
   }
 
   #themeBanner{
-    text-align:center; font-size:13px; font-weight:700; padding:10px 16px;
-    background:var(--sun-deep); color:#fff;
+    text-align:center; padding:20px 20px; background:var(--sun-deep); color:#fff;
+    font-family:'Fredoka',sans-serif; font-weight:700; line-height:1.3;
+    font-size:clamp(19px, 2.8vw, 28px);
+    box-shadow:0 3px 14px rgba(0,0,0,.15);
   }
+  #themeBanner .tb-wrap{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:10px 20px; max-width:1100px; margin:0 auto;
+  }
+  #themeBanner .tb-emoji{font-size:1.4em; line-height:1;}
+  #themeBanner .tb-cta{
+    display:inline-block; font-size:.7em; font-weight:700; text-decoration:none;
+    padding:9px 22px; border-radius:999px; box-shadow:0 3px 0 rgba(0,0,0,.18);
+    white-space:nowrap;
+  }
+  #themeBanner .tb-cta:hover{transform:translateY(-1px);}
   .theme-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;}
   .theme-swatch{
     border:2px solid var(--line); border-radius:14px; padding:14px 12px; cursor:pointer;
@@ -825,9 +838,9 @@
       <p>Você pode, a qualquer momento: solicitar acesso aos dados da criança (já disponível via botão "Baixar histórico completo" na Área dos Pais), solicitar correção de dados incorretos, solicitar a exclusão do cadastro, e revogar o consentimento dado (o que pode limitar o uso do sistema). A autorização de divulgação de fotos e a autorização de cada medicamento podem ser retiradas diretamente no app.</p>
 
       <h3 style="color:var(--ink); font-size:17px; margin-top:26px;">7. Como falar com a escola sobre seus dados</h3>
-      <p>Encarregada de Dados (DPO): <b>Simone Mattle Labre</b><br>
-      WhatsApp/telefone: (42) 99901-8771<br>
-      E-mail: luzaprendizagem1@gmail.com</p>
+      <p>Para tirar dúvidas, pedir acesso, correção ou exclusão dos dados de uma criança, ou exercer qualquer outro direito, fale diretamente com a escola. Responderemos o mais rápido possível.</p>
+      <p><b>WhatsApp da escola:</b> (42) 98863-6845<br>
+      <b>Pessoalmente:</b> Rua Cândido Xavier, 208, Guarapuava — PR</p>
 
       <h3 style="color:var(--ink); font-size:17px; margin-top:26px;">8. Segurança</h3>
       <p>Adotamos medidas técnicas e administrativas para proteger os dados pessoais tratados neste sistema contra acessos não autorizados.</p>
@@ -3671,6 +3684,21 @@
     root.setProperty('--cream-deep', t.creamDeep);
   }
 
+  // Escolhe texto branco ou escuro, conforme a cor de fundo do tema, pra faixa ser sempre legível.
+  function luminancia(hex){
+    const h = String(hex).replace('#', '');
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) / 255)
+      .map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  function corLegivelSobre(fundoHex){
+    const L = luminancia(fundoHex);
+    const ESCURO = '#22394A', Lescuro = luminancia(ESCURO);
+    const comBranco = 1.05 / (L + 0.05);
+    const comEscuro = (L + 0.05) / (Lescuro + 0.05);
+    return comBranco >= comEscuro ? '#FFFFFF' : ESCURO;
+  }
+
   async function initTheme(){
     const tema = await loadTema();
     applyThemeVars(tema.key);
@@ -3678,8 +3706,34 @@
     const def = THEMES[tema.key] || THEMES.padrao;
     const msg = tema.mensagem || def.banner;
     if(tema.key !== 'padrao' && msg){
+      const fundo = def.sunDeep;
+      const texto = corLegivelSobre(fundo);
       banner.style.display = 'block';
-      banner.textContent = (def.emoji ? def.emoji + ' ' : '') + msg;
+      banner.style.background = fundo;
+      banner.style.color = texto;
+      banner.textContent = '';
+      const wrap = document.createElement('div');
+      wrap.className = 'tb-wrap';
+      if(def.emoji){
+        const e = document.createElement('span');
+        e.className = 'tb-emoji';
+        e.textContent = def.emoji;
+        wrap.appendChild(e);
+      }
+      const t = document.createElement('span');
+      t.textContent = msg;
+      wrap.appendChild(t);
+      // Se o aviso fala de matrícula ou vaga, ganha um botão que leva direto ao formulário de vagas.
+      if(/matr[ií]cul|vaga|inscri/i.test(msg)){
+        const a = document.createElement('a');
+        a.className = 'tb-cta';
+        a.href = '#vagas';
+        a.textContent = 'Ver vagas';
+        a.style.background = texto;
+        a.style.color = fundo;
+        wrap.appendChild(a);
+      }
+      banner.appendChild(wrap);
     } else {
       banner.style.display = 'none';
     }
