@@ -856,7 +856,7 @@
         <div class="contact-info">
           <div class="eyebrow" style="background:#fff;">Matrículas abertas</div>
           <h2>Vem conhecer a Luz Aprendizagem</h2>
-          <p>Preencha seus dados que nossa equipe entra em contato para agendar uma visita e verificar vagas disponíveis para a turma do seu filho.</p>
+          <p>Conte seu nome e os dados da criança. Abrimos o WhatsApp da escola com a mensagem pronta, e nossa equipe responde para agendar uma visita e verificar as vagas.</p>
           <div class="info-row">
             <div class="info-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21 C6 16 3 12.5 3 8.5 A4.5 4.5 0 0 1 12 6.5 A4.5 4.5 0 0 1 21 8.5 C21 12.5 18 16 12 21 Z" stroke="#0E5C73" stroke-width="2"/></svg></div>
             Rua Cândido Xavier, 208 — Guarapuava, PR
@@ -868,27 +868,18 @@
         </div>
         <form class="card" id="contatoForm" onsubmit="enviarContatoWhatsApp(event)">
           <div>
-            <label>Nome do responsável</label>
-            <input type="text" id="contatoNome" placeholder="Seu nome completo" required>
-          </div>
-          <div class="row2">
-            <div>
-              <label>Telefone / WhatsApp</label>
-              <input type="text" id="contatoTelefone" placeholder="(00) 00000-0000">
-            </div>
-            <div>
-              <label>Idade da criança</label>
-              <input type="text" id="contatoIdade" placeholder="Ex: 2 anos">
-            </div>
+            <label>Seu nome</label>
+            <input type="text" id="contatoNome" placeholder="Nome do responsável" required>
           </div>
           <div>
-            <label>E-mail</label>
-            <input type="email" id="contatoEmail" placeholder="seuemail@exemplo.com">
+            <label>Nome da criança</label>
+            <input type="text" id="contatoCrianca" placeholder="Nome da criança" required>
           </div>
           <div>
-            <label>Mensagem</label>
-            <textarea id="contatoMensagem" rows="3" placeholder="Conte um pouco sobre o que você procura">Olá! Gostaria de conhecer a CEI Luz Aprendizagem.</textarea>
+            <label>Idade da criança</label>
+            <input type="text" id="contatoIdade" placeholder="Ex: 8 meses ou 3 anos" required>
           </div>
+          <p style="font-size:13px;color:var(--ink-soft);margin:0 0 12px;">Ao tocar no botão, o WhatsApp da escola abre com a mensagem pronta. É só enviar.</p>
           <button class="btn btn-sun" style="justify-content:center;">Quero conhecer a escola</button>
         </form>
       </div>
@@ -1338,24 +1329,29 @@
     return child.modalidade === 'reforco' ? `Reforço escolar · ${periodo}` : periodo;
   }
 
+  // "3" vira "3 anos" e "1" vira "1 ano"; qualquer outra coisa ("8 meses", "2 anos e meio") fica como foi digitada.
+  function formatarIdadeCrianca(txt){
+    const t = String(txt || '').trim();
+    if(/^\d+$/.test(t)) return t + (Number(t) === 1 ? ' ano' : ' anos');
+    return t;
+  }
+
+  // Pré-cadastro: a pessoa informa o próprio nome, o da criança e a idade, e o WhatsApp da escola abre
+  // com a mensagem pronta (a pessoa só precisa tocar em "Enviar"). Nada fica guardado no sistema.
   function enviarContatoWhatsApp(event){
     event.preventDefault();
     const nome = document.getElementById('contatoNome').value.trim();
-    const telefone = document.getElementById('contatoTelefone').value.trim();
-    const idade = document.getElementById('contatoIdade').value.trim();
-    const email = document.getElementById('contatoEmail').value.trim();
-    const mensagem = document.getElementById('contatoMensagem').value.trim();
-    if(!nome){ alert('Preencha seu nome antes de enviar.'); return; }
+    const crianca = document.getElementById('contatoCrianca').value.trim();
+    const idade = formatarIdadeCrianca(document.getElementById('contatoIdade').value);
+    if(!nome || !crianca || !idade){ alert('Preencha seu nome, o nome da criança e a idade.'); return; }
 
-    let texto = `Olá! Meu nome é ${nome}`;
-    if(idade) texto += `, minha criança tem ${idade}`;
-    texto += `.\n${mensagem}`;
-    if(telefone) texto += `\nMeu telefone: ${telefone}`;
-    if(email) texto += `\nMeu e-mail: ${email}`;
-
+    const texto = `Olá! Meu nome é ${nome}. Gostaria de conhecer a CEI Luz Aprendizagem e saber sobre as vagas.\nCriança: ${crianca}, ${idade}.`;
     const numeroEscola = '5542988636845'; // (42) 98863-6845
     const url = `https://wa.me/${numeroEscola}?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+    const janela = window.open(url, '_blank');
+    if(!janela) window.location.href = url; // se o navegador bloquear a nova aba, abre nesta mesma
+    const form = document.getElementById('contatoForm');
+    if(form && form.reset) form.reset();
   }
 
   async function loadChildren(){
@@ -2186,7 +2182,7 @@
     const m = post.manha || {}; const t = post.tarde || {};
     const linha = (label, val) => `<tr><td style="padding:4px 10px 4px 0;color:#5C7484;font-size:12px;">${label}</td><td style="padding:4px 0;font-size:13.5px;">${esc(val) || '—'}</td></tr>`;
     const html = `
-      <html><head><meta charset="UTF-8"><title>Rotina de ${esc(child ? child.nome : '')} — ${post.data}</title>
+      <html><head><meta charset="UTF-8"><title>Rotina de ${esc(child ? child.nome : '')} — ${dataBr(post.data)}</title>
       <style>
         body{font-family:Arial,sans-serif;color:#22394A;padding:24px;max-width:600px;margin:0 auto;}
         h1{font-size:20px;margin:0 0 4px;} h2{font-size:14px;color:#E2691B;margin:20px 0 8px;}
@@ -3214,6 +3210,19 @@
     const rC = document.getElementById('r_conteudo'); if(rC) rC.value = r.conteudo || '';
     const rO = document.getElementById('r_obs'); if(rO) rO.value = r.obs || '';
     alert('Rotina de ' + new Date(data+'T00:00:00').toLocaleDateString('pt-BR') + ' carregada no formulário acima. Ajuste o que precisar e clique em Publicar de novo.');
+    const alvo = document.getElementById('postDataM') || document.getElementById('postDataR') || document.getElementById('postDataT');
+    if(alvo && alvo.scrollIntoView) alvo.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  // Apaga o DIA inteiro (manhã, tarde e foto do dia). A família deixa de ver. Só a professora da turma
+  // (e a administração, pelo banco) pode; o botão só aparece na tela da professora.
+  async function apagarRotinaDia(postId, data){
+    if(!confirm('Apagar a rotina do dia ' + dataBr(data) + '? A família deixa de ver esse dia (manhã e tarde). Não dá pra desfazer.')) return;
+    const { data: apagados, error } = await sb.from('posts').delete().eq('id', postId).select('id');
+    if(error){ alert('Erro ao apagar: ' + error.message); return; }
+    if(!apagados || !apagados.length){ alert('Não foi possível apagar essa rotina (sem permissão).'); return; }
+    if(document.getElementById('profPostSection')) selectChildProf(selectedChildId);
+    else selectChild(selectedChildId);
   }
 
   async function selectChild(id, rolar){
@@ -3433,13 +3442,19 @@
         ${r.obs ? `<div class="adm-post-obs">${esc(r.obs)}</div>` : ''}`;
   }
 
+  // Data no formato brasileiro (dd/mm/aaaa). Aceita '2026-11-03' (como vem do banco).
+  function dataBr(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso == null ? '' : iso));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(iso == null ? '' : iso);
+  }
+
   function renderPostCard(p, { allowEdit } = {}){
     const m = p.manha || {}; const t = p.tarde || {};
     // Dia só de reforço: não mostra os blocos vazios de manhã/tarde.
     const soReforco = !!p.reforco && !p.manha && !p.tarde;
     return `
       <div class="adm-post">
-        <div class="adm-post-date">${p.data} ${allowEdit ? `<button class="btn btn-ghost btn-sm" style="float:right;" onclick="prefillRotina('${p.data}')">Editar este dia</button>` : ''}</div>
+        <div class="adm-post-date">${dataBr(p.data)} ${allowEdit ? `<span style="float:right;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><button class="btn btn-ghost btn-sm" onclick="prefillRotina('${p.data}')">Editar este dia</button><button class="btn btn-danger btn-sm" onclick="apagarRotinaDia('${p.id}', '${p.data}')">Apagar este dia</button></span>` : ''}</div>
 
         ${p.reforco ? renderReforcoBlock(p.reforco) : ''}
         ${soReforco ? '' : `<div class="adm-period">🍞 Período da Manhã</div>
