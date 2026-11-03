@@ -1458,7 +1458,16 @@
   function toggleModal(open){
     document.getElementById('modal').classList.toggle('open', open);
   }
+  // Lembra qual área (professora, pais, administração) está aberta, pra recarregar a página (F5 ou
+  // puxar a tela) voltar pra mesma área em vez de cair no site público. Fica só nesta aba (sessionStorage):
+  // numa visita nova, o site abre normal. Some quando a pessoa sai, fecha a janela ou volta ao site.
+  const CHAVE_AREA = 'ceila_area_aberta';
+  function lembrarArea(a){ try{ sessionStorage.setItem(CHAVE_AREA, a); }catch(e){} }
+  function esquecerArea(){ try{ sessionStorage.removeItem(CHAVE_AREA); }catch(e){} }
+  function areaLembrada(){ try{ return sessionStorage.getItem(CHAVE_AREA); }catch(e){ return null; } }
+
   function closeModal(){
+    esquecerArea();
     toggleModal(false);
     document.getElementById('modalBox').classList.remove('modal-wide');
   }
@@ -1771,6 +1780,7 @@
   }
 
   async function sairAreaDosPais(){
+    esquecerArea();
     await sb.auth.signOut();
     parentSession = null;
     parentAuthTab = 'entrar';
@@ -1821,6 +1831,7 @@
       body.innerHTML = `<div class="adm-empty">Cadastro não encontrado.<br><button class="adm-logout" onclick="sairAreaDosPais();">Voltar ao login</button></div>`;
       return;
     }
+    lembrarArea('pais');
     const ehLegal = ehResponsavelLegal(parentSession.parentesco);
     if(!child.consentimento_dados){
       // Só mãe, pai ou responsável legal aceita o termo. Outro familiar espera um deles aceitar.
@@ -2463,6 +2474,7 @@
   }
 
   async function sairProfessora(){
+    esquecerArea();
     await sb.auth.signOut();
     teacherSession = null;
     profAuthTab = 'entrar';
@@ -2480,6 +2492,7 @@
       body.innerHTML = `<div class="adm-empty">Cadastro não encontrado.<br><button class="adm-logout" onclick="sairProfessora();">Voltar</button></div>`;
       return;
     }
+    lembrarArea('professora');
     professoraAtual = t;
     minhasCriancasProf = children.filter(c => t.turmas.includes(c.turma));
     recadosPendentesProf = await countRecadosPendentes(minhasCriancasProf.map(c => c.id));
@@ -2731,10 +2744,12 @@
   let adminSection = 'overview';
 
   function openAdminDashboard(){
+    lembrarArea('admin');
     document.getElementById('adminApp').classList.add('open');
     setAdminSection('overview');
   }
   function exitAdmin(){
+    esquecerArea();
     document.getElementById('adminApp').classList.remove('open');
   }
   function setAdminSection(section){
@@ -3223,7 +3238,7 @@
     const child = children.find(c => c.id === id);
     const vinculosList = renderResponsaveisLista(vinculos);
 
-    document.getElementById('childDetailCol').innerHTML = renderPostForm(child, posts) + renderConvitesCrianca(child, convites) + `
+    document.getElementById('childDetailCol').innerHTML = renderPostForm(child, posts, { somenteLeitura: true }) + renderConvitesCrianca(child, convites) + `
       <div class="adm-card">
         <h4 style="font-size:15px;margin-bottom:4px;">Pessoas com acesso</h4>
         <p class="adm-child-meta" style="margin-bottom:14px;">Quem já usou um código aparece aqui. Se alguém escolheu o código errado, corrija no seletor "Quem é".</p>
@@ -3533,11 +3548,18 @@
       </div>`;
   }
 
-  function renderPostForm(child, posts){
-    const postsHtml = posts.length ? posts.slice().reverse().map(p => renderPostCard(p, { allowEdit: true })).join('') : `<div class="adm-empty">Nenhuma postagem ainda para ${esc(child.nome)}.</div>`;
+  // opcoes.somenteLeitura = true (tela da administração): mostra a criança e o histórico do que a
+  // professora publicou, SEM o formulário de preencher a rotina. Quem preenche é a professora.
+  function renderPostForm(child, posts, opcoes){
+    const leitura = !!(opcoes && opcoes.somenteLeitura);
+    const postsHtml = posts.length
+      ? posts.slice().reverse().map(p => renderPostCard(p, { allowEdit: !leitura })).join('')
+      : (leitura
+          ? `<div class="adm-empty">A professora ainda não publicou nenhuma rotina de ${esc(child.nome)}.</div>`
+          : `<div class="adm-empty">Nenhuma postagem ainda para ${esc(child.nome)}.</div>`);
     const periodo = child.periodo || 'integral';
     const ehReforco = child.modalidade === 'reforco';
-    const periodoAviso = (periodo === 'integral' && !ehReforco)
+    const periodoAviso = (periodo === 'integral' && !ehReforco && !leitura)
       ? `<p class="adm-child-meta" style="margin:-4px 0 14px;">Criança de período integral — manhã e tarde são publicadas separadamente, mas você preenche cada uma quando quiser: os dois de uma vez, só uma por enquanto, ou em momentos diferentes do dia. Não tem hora certa.</p>`
       : '';
 
@@ -3568,12 +3590,13 @@
         </div>
       </div>
       ${periodoAviso}
-      ${ehReforco
+      ${leitura ? '' : (ehReforco
         ? renderReforcoCard(child)
-        : `${periodo !== 'tarde' ? renderManhaCard(child) : ''}${periodo !== 'manha' ? renderTardeCard(child) : ''}`}
+        : `${periodo !== 'tarde' ? renderManhaCard(child) : ''}${periodo !== 'manha' ? renderTardeCard(child) : ''}`)}
 
       <div class="adm-card">
-        <h4 style="font-size:15px;margin-bottom:10px;">Histórico</h4>
+        <h4 style="font-size:15px;margin-bottom:${leitura ? '4px' : '10px'};">${leitura ? 'Rotinas publicadas pela professora' : 'Histórico'}</h4>
+        ${leitura ? `<p class="adm-child-meta" style="margin-bottom:14px;">Aqui você acompanha o que a professora da turma publicou. Quem preenche a rotina é a professora.</p>` : ''}
         ${postsHtml}
       </div>
     `;
@@ -3995,7 +4018,7 @@
     renderPublicGallery();
     renderPublicInfo();
     initTheme();
-    sb.auth.getSession().then(async ({ data }) => {
+    const prontoAdmin = sb.auth.getSession().then(async ({ data }) => {
       if(!data.session) return;
       const { data: adminRow } = await sb.from('admins').select('auth_user_id').eq('auth_user_id', data.session.user.id).maybeSingle();
       if(adminRow) adminLogged = true;
@@ -4007,6 +4030,11 @@
       if(painel === 'professora') openProfessoraModal();
       else if(painel === 'admin') openAdminModal();
       else openParentModal();
+    } else {
+      const area = areaLembrada();
+      if(area === 'professora') openProfessoraModal();
+      else if(area === 'pais') openParentModal();
+      else if(area === 'admin') prontoAdmin.then(() => { if(adminLogged) openAdminModal(); else esquecerArea(); });
     }
   }
 
