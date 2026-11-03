@@ -2524,6 +2524,7 @@
         <label>Período</label>
         <select id="newCPeriodoProf">${periodoOptionsFor('infantil', 'integral')}</select>
         <div class="adm-error" id="cErrorProf" style="display:none;"></div>
+        <p class="adm-child-meta" style="margin:10px 0 14px;">Depois de cadastrar, peça à administração o <b>código de convite</b> da família. Só a administração gera os códigos de acesso.</p>
         <button class="btn btn-sun" onclick="addChildProf()">Cadastrar criança</button>
       </div>
 
@@ -2613,7 +2614,7 @@
           <div class="adm-child-name">${esc(c.nome)} ${pendentes ? `<span class="adm-tag" style="background:var(--red-bg,#FBE0DD);color:#C4453A;">🔴 ${pendentes} recado${pendentes>1?'s':''} novo${pendentes>1?'s':''}</span>` : ''}</div>
           <div class="adm-child-meta">${esc(c.turma)}${c.modalidade === 'reforco' ? ' · Reforço' : ''}</div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="selectChildProf('${c.id}')">Postar / Ver rotina</button>
+        <button class="btn btn-ghost btn-sm" onclick="selectChildProf('${c.id}', true)">Postar / Ver rotina</button>
       </div>`;
         }).join('');
     const col = document.getElementById('profChildListCol');
@@ -2632,7 +2633,18 @@
     if(ok) renderProfDashboardAsync();
   }
 
-  async function selectChildProf(id){
+  // 'rolar' = true só quando a professora TOCA na criança na lista: leva a tela até a agenda,
+  // que é desenhada no fim da página (no celular ficava fora da tela).
+  async function selectChildProf(id, rolar){
+    await selectChildProfInterno(id);
+    const sec = document.getElementById('profPostSection');
+    if(!sec) return;
+    if(rolar){
+      sec.innerHTML = `<p style="margin:0 0 12px;"><a href="#" onclick="document.getElementById('profChildSearch').scrollIntoView({behavior:'smooth',block:'center'}); return false;" style="font-size:13px;font-weight:700;color:var(--sky-ink);text-decoration:none;">⬆ Voltar à lista de crianças</a></p>` + sec.innerHTML;
+      if(sec.scrollIntoView) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+  }
+  async function selectChildProfInterno(id){
     selectedChildId = id;
     const posts = await loadPosts(id);
     for(const p of posts){ p._url = await fotoUrl(p.foto_url); }
@@ -2909,7 +2921,7 @@
       ? `<div class="adm-empty">${termo ? 'Nenhuma criança encontrada.' : 'Nenhuma criança cadastrada ainda.'}</div>`
       : lista.map(c => `
       <div class="adm-child-list-item ${c.id===selectedChildId?'selected':''}" id="childItem_${c.id}">
-        <div onclick="selectChild('${c.id}')" style="cursor:pointer;">
+        <div onclick="selectChild('${c.id}', true)" style="cursor:pointer;">
           <div class="adm-child-name">${esc(c.nome)}</div>
           <div class="adm-child-meta">${esc(c.turma)}${c.modalidade === 'reforco' ? ' · Reforço' : ''}</div>
         </div>
@@ -3189,7 +3201,15 @@
     alert('Rotina de ' + new Date(data+'T00:00:00').toLocaleDateString('pt-BR') + ' carregada no formulário acima. Ajuste o que precisar e clique em Publicar de novo.');
   }
 
-  async function selectChild(id){
+  async function selectChild(id, rolar){
+    await selectChildInterno(id);
+    // no celular o detalhe abre ABAIXO da lista; no computador fica ao lado e não precisa rolar
+    if(rolar && window.matchMedia && window.matchMedia('(max-width:860px)').matches){
+      const col = document.getElementById('childDetailCol');
+      if(col && col.scrollIntoView) col.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+  }
+  async function selectChildInterno(id){
     selectedChildId = id;
     document.querySelectorAll('.adm-child-list-item').forEach(el => el.classList.remove('selected'));
     const item = document.getElementById('childItem_' + id);
