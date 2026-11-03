@@ -2473,6 +2473,7 @@
 
   async function renderProfDashboardAsync(){
     await loadChildren();
+    await loadTeachers(); // depois do login a lista precisa ser recarregada (a página abriu antes, sem acesso)
     const t = teachers.find(x => x.id === teacherSession.teacherId);
     const body = document.getElementById('modalBody');
     if(!t){
