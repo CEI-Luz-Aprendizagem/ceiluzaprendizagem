@@ -360,6 +360,39 @@
     display:flex; align-items:center; justify-content:center; font-family:'Fredoka'; font-weight:700; flex:none;
   }
   .adm-logout{font-size:12.5px; color:var(--ink-soft); cursor:pointer; text-decoration:underline; background:none; border:none; padding:0;}
+
+  /* ===== PAINEL DA PROFESSORA: menu lateral + seções ===== */
+  .modal.modal-prof{max-width:980px; padding:0; overflow:hidden; height:min(88vh, 780px);}
+  .prof-app{display:grid; grid-template-columns:230px minmax(0,1fr); grid-template-rows:minmax(0,1fr); height:100%; position:relative;}
+  .prof-menu{background:var(--cream-deep); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0;}
+  .prof-menu-head{display:flex; align-items:center; gap:10px; padding:4px 8px 16px; border-bottom:1px solid var(--line); margin-bottom:10px;}
+  .prof-menu-head b{display:block; font-size:14px; line-height:1.25;}
+  .prof-menu-head small{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .prof-menu-item{display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; cursor:pointer; padding:13px 14px; border-radius:14px; font-family:'Fredoka'; font-weight:600; font-size:15.5px; color:var(--ink);}
+  .prof-menu-item:hover{background:rgba(0,0,0,.05);}
+  .prof-menu-item.ativa{background:var(--sun-deep); color:#fff;}
+  .prof-badge{margin-left:auto; background:#C4453A; color:#fff; border-radius:999px; font-size:11px; padding:2px 8px; font-family:'Nunito'; font-weight:800;}
+  .prof-badge:empty{display:none;}
+  .prof-menu-foot{margin-top:auto; padding:14px 8px 0; display:flex; gap:16px; border-top:1px solid var(--line);}
+  .prof-main{overflow-y:auto; padding:26px 28px 30px; min-width:0; min-height:0;}
+  .prof-topbar{display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-right:40px;}
+  .prof-topbar h3{margin:0;}
+  .prof-hamb{display:none; background:var(--sun-deep); color:#fff; border:none; border-radius:12px; padding:9px 14px; font-family:'Fredoka'; font-weight:600; font-size:14px; cursor:pointer; white-space:nowrap;}
+  .prof-view{display:none;}
+  .prof-view.ativa{display:block;}
+  .prof-overlay{display:none;}
+  @media (max-width:860px){
+    .modal-overlay.prof-aberto{padding:0;}
+    .modal.modal-prof{max-width:none; width:100%; height:100%; max-height:100%; border-radius:0;}
+    .prof-app{display:flex; flex-direction:column;}
+    .prof-main{flex:1; padding:0 16px 26px;}
+    .prof-topbar{position:sticky; top:0; z-index:3; background:#fff; margin:0 -16px 14px; padding:12px 64px 12px 16px; border-bottom:1px solid var(--line);}
+    .prof-hamb{display:inline-flex; align-items:center;}
+    .prof-menu{position:absolute; top:0; left:0; bottom:0; width:min(82%, 300px); z-index:6; transform:translateX(-104%); transition:transform .25s ease; box-shadow:0 0 40px rgba(0,0,0,.28);}
+    .prof-app.menu-aberto .prof-menu{transform:translateX(0);}
+    .prof-overlay{display:block; position:absolute; inset:0; background:rgba(34,57,74,.45); z-index:5; opacity:0; pointer-events:none; transition:opacity .2s ease;}
+    .prof-app.menu-aberto .prof-overlay{opacity:1; pointer-events:auto;}
+  }
   .foot-hidden{cursor:pointer; font-size:12px; color:var(--ink-soft); opacity:.85; margin-top:8px; text-decoration:underline; text-underline-offset:3px;}
   .adm-gal-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .adm-gal-item{position:relative; border-radius:12px; overflow:hidden; aspect-ratio:1/1;}
@@ -1285,6 +1318,8 @@
     recadosPendentesProf = await countRecadosPendentes(minhasCriancasProf.map(c => c.id));
     const aviso = document.getElementById('profAvisoRecados');
     if(aviso) aviso.innerHTML = renderAvisoRecadosProf();
+    const selo = document.getElementById('profBadgeAlunos');
+    if(selo) selo.textContent = Object.values(recadosPendentesProf).reduce((a, b) => a + b, 0) || '';
     const busca = document.getElementById('profChildSearch');
     renderProfChildList(busca ? busca.value : '');
   }
@@ -1459,11 +1494,12 @@
   // numa visita nova, o site abre normal. Some quando a pessoa sai, fecha a janela ou volta ao site.
   const CHAVE_AREA = 'ceila_area_aberta';
   function lembrarArea(a){ try{ sessionStorage.setItem(CHAVE_AREA, a); }catch(e){} }
-  function esquecerArea(){ try{ sessionStorage.removeItem(CHAVE_AREA); }catch(e){} }
+  function esquecerArea(){ try{ sessionStorage.removeItem(CHAVE_AREA); sessionStorage.removeItem('ceila_prof_secao'); }catch(e){} }
   function areaLembrada(){ try{ return sessionStorage.getItem(CHAVE_AREA); }catch(e){ return null; } }
 
   function closeModal(){
     esquecerArea();
+    ajustarModalProf(false);
     toggleModal(false);
     document.getElementById('modalBox').classList.remove('modal-wide');
   }
@@ -1473,6 +1509,47 @@
 
   function setWide(wide){
     document.getElementById('modalBox').classList.toggle('modal-wide', wide);
+    ajustarModalProf(false); // qualquer outra tela volta ao tamanho normal da janela
+  }
+
+  // ===== Painel da professora: menu lateral e seções =====
+  const SECOES_PROF = { cadastro: 'Novo cadastro', alunos: 'Aluno(a)s', rotina: 'Rotina' };
+  const CHAVE_SECAO_PROF = 'ceila_prof_secao';
+  function ajustarModalProf(ativo){
+    const box = document.getElementById('modalBox'); const ov = document.getElementById('modal');
+    if(box) box.classList.toggle('modal-prof', !!ativo);
+    if(ov) ov.classList.toggle('prof-aberto', !!ativo);
+  }
+  function secaoInicialProf(){
+    let s = null;
+    try{ s = sessionStorage.getItem(CHAVE_SECAO_PROF); }catch(e){}
+    return SECOES_PROF[s] ? s : 'alunos';
+  }
+  function abrirSecaoProf(nome){
+    if(!SECOES_PROF[nome]) nome = 'alunos';
+    document.querySelectorAll('.prof-view').forEach(v => v.classList.toggle('ativa', v.dataset.secao === nome));
+    document.querySelectorAll('.prof-menu-item').forEach(b => b.classList.toggle('ativa', b.dataset.secao === nome));
+    const titulo = document.getElementById('profTitulo');
+    if(titulo) titulo.textContent = SECOES_PROF[nome];
+    fecharMenuProf();
+    try{ sessionStorage.setItem(CHAVE_SECAO_PROF, nome); }catch(e){}
+    const main = document.getElementById('profMain');
+    if(main && main.scrollTo) main.scrollTo({ top: 0 });
+  }
+  function alternarMenuProf(){
+    const a = document.getElementById('profApp');
+    if(a) a.classList.toggle('menu-aberto');
+  }
+  function fecharMenuProf(){
+    const a = document.getElementById('profApp');
+    if(a) a.classList.remove('menu-aberto');
+  }
+  // Seção "Rotina": a professora escolhe a criança numa lista e a agenda dela abre logo abaixo.
+  function escolherCriancaRotina(id){
+    if(id){ selectChildProf(id); return; }
+    selectedChildId = null;
+    const sec = document.getElementById('profPostSection');
+    if(sec) sec.innerHTML = '';
   }
 
   function openParentModal(){
@@ -1573,6 +1650,7 @@
 
   function renderModal(){
     const body = document.getElementById('modalBody');
+    if(modalView !== 'prof-dashboard') ajustarModalProf(false);
     if(modalView === 'parent-login') tryAutoParentLogin();
     else if(modalView === 'parent-feed') renderParentFeedAsync();
     else if(modalView === 'admin-login') body.innerHTML = renderAdminLogin();
@@ -1606,6 +1684,11 @@
   function mensagemErroLogin(error){
     const msg = ((error && error.message) || '').toLowerCase();
     if(msg.includes('not confirmed')) return 'Você ainda não confirmou o e-mail. Abra a mensagem que enviamos pra você e clique no link de confirmação.';
+    // Falha de conexão ou sistema fora do ar (internet ruim, projeto pausado...): NÃO é senha errada.
+    const semConexao = (error && (error.name === 'AuthRetryableFetchError' || error.status === 0 || error.status >= 500))
+      || /failed to fetch|network|fetch|timeout|load failed|paused|unavailable|bad gateway|gateway/.test(msg);
+    if(semConexao) return 'Não consegui conectar ao sistema agora. Verifique a internet e tente de novo em alguns minutos. Se continuar, avise a escola.';
+    if(msg.includes('rate limit') || msg.includes('too many')) return 'Muitas tentativas em pouco tempo. Espere alguns minutos e tente de novo.';
     return 'E-mail ou senha incorretos.';
   }
 
@@ -2507,35 +2590,16 @@
         <b>${esc(c.titulo)}</b>${ehNovoDesde(c.created_at, comProfUltimoVisto) ? TAG_NOVO : ''}<br>${esc(c.mensagem)}
       </div>`).join('') : '';
     const turmaOptions = t.turmas.map(tu => `<option value="${esc(tu)}">${esc(tu)}</option>`).join('');
+    const totalPendentes = Object.values(recadosPendentesProf).reduce((a, b) => a + b, 0);
+    const iniciais = esc(t.nome.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0].toUpperCase()).join(''));
+    const criancasOptions = minhasCriancasProf.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
 
-    body.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <div><h3>Olá, ${esc(t.nome)}!</h3><p class="sub" style="margin:4px 0 0;">Turmas: ${esc(t.turmas.join(', '))}</p></div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button class="adm-logout" onclick="abrirRedefinirSenha()">Alterar senha</button>
-          <button class="adm-logout" onclick="sairProfessora();">Sair</button>
-        </div>
-      </div>
-
+    // ----- Seção ALUNO(A)S: avisos no topo + lista de crianças (a que abre ao entrar) -----
+    const viewAlunos = `
       <div id="profAvisoRecados">${renderAvisoRecadosProf()}</div>
       ${comunicadosProfHtml}
       ${faltasHtml}
       ${renderDivulgacaoResumo(minhasCriancasProf)}
-
-      <div class="adm-card">
-        <h4 style="font-size:15px;margin-bottom:10px;">Cadastrar criança da sua turma</h4>
-        <div class="adm-grid2">
-          <div><label>Nome</label><input type="text" id="newCNameProf" placeholder="Ex: Miguel"></div>
-          <div><label>Turma</label><select id="newCTurmaProf">${turmaOptions}</select></div>
-        </div>
-        <label>Tipo de cadastro</label>
-        <select id="newCModalidadeProf" onchange="aoMudarModalidade('newCModalidadeProf','newCPeriodoProf')">${modalidadeOptions('infantil')}</select>
-        <label>Período</label>
-        <select id="newCPeriodoProf">${periodoOptionsFor('infantil', 'integral')}</select>
-        <div class="adm-error" id="cErrorProf" style="display:none;"></div>
-        <p class="adm-child-meta" style="margin:10px 0 14px;">Depois de cadastrar, peça à administração o <b>código de convite</b> da família. Só a administração gera os códigos de acesso.</p>
-        <button class="btn btn-sun" onclick="addChildProf()">Cadastrar criança</button>
-      </div>
 
       <div class="adm-card">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
@@ -2549,9 +2613,66 @@
         <div id="profChildListCol">${renderProfChildList()}</div>
       </div>
 
-      <div id="chamadaSection"></div>
-      <div id="profPostSection"></div>
+      <div id="chamadaSection"></div>`;
+
+    // ----- Seção NOVO CADASTRO -----
+    const viewCadastro = `
+      <div class="adm-card">
+        <h4 style="font-size:15px;margin-bottom:10px;">Cadastrar criança da sua turma</h4>
+        <div class="adm-grid2">
+          <div><label>Nome</label><input type="text" id="newCNameProf" placeholder="Ex: Miguel"></div>
+          <div><label>Turma</label><select id="newCTurmaProf">${turmaOptions}</select></div>
+        </div>
+        <label>Tipo de cadastro</label>
+        <select id="newCModalidadeProf" onchange="aoMudarModalidade('newCModalidadeProf','newCPeriodoProf')">${modalidadeOptions('infantil')}</select>
+        <label>Período</label>
+        <select id="newCPeriodoProf">${periodoOptionsFor('infantil', 'integral')}</select>
+        <div class="adm-error" id="cErrorProf" style="display:none;"></div>
+        <p class="adm-child-meta" style="margin:10px 0 14px;">Depois de cadastrar, peça à administração o <b>código de convite</b> da família. Só a administração gera os códigos de acesso.</p>
+        <button class="btn btn-sun" onclick="addChildProf()">Cadastrar criança</button>
+      </div>`;
+
+    // ----- Seção ROTINA: escolhe a criança e a agenda abre logo abaixo -----
+    const viewRotina = `
+      <div class="adm-card">
+        <h4 style="font-size:15px;margin-bottom:10px;">Rotina do dia</h4>
+        <label>Escolha a criança</label>
+        <select id="profRotinaCrianca" onchange="escolherCriancaRotina(this.value)">
+          <option value="">Escolha a criança...</option>${criancasOptions}
+        </select>
+        <p class="adm-child-meta" style="margin:0;">${criancasOptions ? 'Escolha a criança pra preencher a rotina ou ver o histórico. Em <b>Aluno(a)s</b>, o botão "Postar / Ver rotina" abre direto na criança.' : 'Ainda não há crianças na sua turma. Cadastre a primeira em <b>Novo cadastro</b>.'}</p>
+      </div>
+      <div id="profPostSection"></div>`;
+
+    body.innerHTML = `
+      <div class="prof-app" id="profApp">
+        <div class="prof-overlay" onclick="fecharMenuProf()"></div>
+        <aside class="prof-menu" id="profMenu">
+          <div class="prof-menu-head">
+            <div class="adm-avatar">${iniciais}</div>
+            <div><b>Olá, ${esc(t.nome)}!</b><small>Turmas: ${esc(t.turmas.join(', '))}</small></div>
+          </div>
+          <button class="prof-menu-item" data-secao="cadastro" onclick="abrirSecaoProf('cadastro')">➕ Novo cadastro</button>
+          <button class="prof-menu-item" data-secao="alunos" onclick="abrirSecaoProf('alunos')">👶 Aluno(a)s <span class="prof-badge" id="profBadgeAlunos">${totalPendentes || ''}</span></button>
+          <button class="prof-menu-item" data-secao="rotina" onclick="abrirSecaoProf('rotina')">📋 Rotina</button>
+          <div class="prof-menu-foot">
+            <button class="adm-logout" onclick="abrirRedefinirSenha()">Alterar senha</button>
+            <button class="adm-logout" onclick="sairProfessora();">Sair</button>
+          </div>
+        </aside>
+        <div class="prof-main" id="profMain">
+          <div class="prof-topbar">
+            <button class="prof-hamb" onclick="alternarMenuProf()" aria-label="Abrir menu">☰ Menu</button>
+            <h3 id="profTitulo">Aluno(a)s</h3>
+          </div>
+          <section class="prof-view" data-secao="alunos">${viewAlunos}</section>
+          <section class="prof-view" data-secao="cadastro">${viewCadastro}</section>
+          <section class="prof-view" data-secao="rotina">${viewRotina}</section>
+        </div>
+      </div>
     `;
+    ajustarModalProf(true);
+    abrirSecaoProf(secaoInicialProf());
   }
 
   // ===== Chamada / presença =====
@@ -2639,18 +2760,25 @@
     err.style.display = 'none';
     if(!nome){ err.textContent = 'Preencha o nome.'; err.style.display = 'block'; return; }
     const ok = await insertChild({ nome, turma, periodo, modalidade });
-    if(ok) renderProfDashboardAsync();
+    if(ok){
+      try{ sessionStorage.setItem('ceila_prof_secao', 'alunos'); }catch(e){}
+      renderProfDashboardAsync();
+      alert(nome + ' cadastrado(a)! Agora peça à administração o código de convite da família.');
+    }
   }
 
   // 'rolar' = true só quando a professora TOCA na criança na lista: leva a tela até a agenda,
   // que é desenhada no fim da página (no celular ficava fora da tela).
   async function selectChildProf(id, rolar){
     await selectChildProfInterno(id);
+    const sel = document.getElementById('profRotinaCrianca');
+    if(sel) sel.value = id;
     const sec = document.getElementById('profPostSection');
     if(!sec) return;
     if(rolar){
-      sec.innerHTML = `<p style="margin:0 0 12px;"><a href="#" onclick="document.getElementById('profChildSearch').scrollIntoView({behavior:'smooth',block:'center'}); return false;" style="font-size:13px;font-weight:700;color:var(--sky-ink);text-decoration:none;">⬆ Voltar à lista de crianças</a></p>` + sec.innerHTML;
-      if(sec.scrollIntoView) sec.scrollIntoView({ behavior:'smooth', block:'start' });
+      // veio da lista de Aluno(a)s: abre a seção Rotina já nessa criança
+      sec.innerHTML = `<p style="margin:0 0 12px;"><a href="#" onclick="abrirSecaoProf('alunos'); return false;" style="font-size:13px;font-weight:700;color:var(--sky-ink);text-decoration:none;">← Voltar aos alunos</a></p>` + sec.innerHTML;
+      abrirSecaoProf('rotina');
     }
   }
   async function selectChildProfInterno(id){
@@ -2715,7 +2843,7 @@
     const pass = document.getElementById('adminPass').value;
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
     if(error){
-      document.getElementById('adminError').textContent = 'E-mail ou senha incorretos.';
+      document.getElementById('adminError').textContent = mensagemErroLogin(error);
       document.getElementById('adminError').style.display = 'block';
       return;
     }
