@@ -1704,10 +1704,11 @@
     return !error;
   }
 
-  function renderVincularCodigoPai(podeVoltar){
+  function renderVincularCodigoPai(podeVoltar, email){
     return `
       <h3>${podeVoltar ? 'Adicionar outra criança' : 'Falta só um passo'}</h3>
       <p class="sub">${podeVoltar ? 'Digite o código de convite que a escola te passou pra essa outra criança.' : 'Sua conta ainda não está ligada a nenhuma criança. Digite o código de convite que a escola te passou.'}</p>
+      ${podeVoltar ? '' : avisoContaLogada(email, 'de um responsável')}
       <label>Código de convite</label>
       <input type="text" id="vincularCodigoPai" placeholder="Ex: ABC1234">
       <div class="adm-error" id="vincularErroPai" style="display:none;"></div>
@@ -1748,8 +1749,12 @@
     if(!error && (!vinculos || !vinculos.length) && await vincularPendentePai()){
       ({ data: vinculos, error } = await sb.from('vinculos_pais').select('child_id, parentesco, children(*)').order('created_at'));
     }
-    if(error || !vinculos || !vinculos.length){
-      document.getElementById('modalBody').innerHTML = renderVincularCodigoPai();
+    if(error){
+      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveParentSession()', 'sairAreaDosPais()');
+      return;
+    }
+    if(!vinculos || !vinculos.length){
+      document.getElementById('modalBody').innerHTML = renderVincularCodigoPai(false, await emailDaSessao());
       return;
     }
     parentChildOptions = vinculos.map(v => v.children).filter(Boolean);
@@ -2512,10 +2517,27 @@
     return !error;
   }
 
-  function renderVincularCodigoProf(){
+  // Falha ao consultar o banco (sem internet, modo avião, sistema fora do ar): NÃO é falta de código.
+  function renderErroConexao(tentarJs, sairJs){
+    return `
+      <h3>Não consegui carregar seus dados</h3>
+      <p class="sub">Verifique se o celular está com internet (o modo avião precisa estar desligado) e tente de novo. Se continuar, avise a escola.</p>
+      <button class="btn btn-sun" style="width:100%;" onclick="${tentarJs}">Tentar de novo</button>
+      <button class="adm-logout" style="margin-top:12px;" onclick="${sairJs}">Sair</button>
+    `;
+  }
+  function avisoContaLogada(email, quem){
+    return email ? `<p class="adm-child-meta" style="margin:-10px 0 16px;">Você entrou como <b>${esc(email)}</b>. Se essa não é a conta ${quem}, toque em <b>Sair</b> e entre com a conta certa.</p>` : '';
+  }
+  async function emailDaSessao(){
+    try{ const { data } = await sb.auth.getSession(); return (data && data.session && data.session.user && data.session.user.email) || ''; }catch(e){ return ''; }
+  }
+
+  function renderVincularCodigoProf(email){
     return `
       <h3>Falta só um passo</h3>
       <p class="sub">Sua conta ainda não está ligada a um cadastro de professora. Digite o código de convite que a escola te passou.</p>
+      ${avisoContaLogada(email, 'de uma professora')}
       <label>Código de convite</label>
       <input type="text" id="vincularCodigoProf" placeholder="Ex: ABC1234">
       <div class="adm-error" id="vincularErroProf" style="display:none;"></div>
@@ -2542,8 +2564,12 @@
     if(!error && !vinculo && await vincularPendenteProf()){
       ({ data: vinculo, error } = await sb.from('vinculos_professoras').select('teacher_id, teachers(*)').maybeSingle());
     }
-    if(error || !vinculo || !vinculo.teachers){
-      document.getElementById('modalBody').innerHTML = renderVincularCodigoProf();
+    if(error){
+      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveProfSession()', 'sairProfessora()');
+      return;
+    }
+    if(!vinculo || !vinculo.teachers){
+      document.getElementById('modalBody').innerHTML = renderVincularCodigoProf(await emailDaSessao());
       return;
     }
     teacherSession = { teacherId: vinculo.teachers.id };
