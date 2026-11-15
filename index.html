@@ -2664,9 +2664,18 @@
   }
 
   async function resolveProfSession(){
-    let { data: vinculo, error } = await sb.from('vinculos_professoras').select('teacher_id, teachers(*)').maybeSingle();
+    // Só os vínculos DESTA conta (a administração enxerga todos; sem o filtro vinha mais de uma linha e dava erro).
+    const buscarVinculo = async () => {
+      const { data: sess } = await sb.auth.getSession();
+      const uid = sess && sess.session && sess.session.user && sess.session.user.id;
+      if(!uid) return { data: null, error: null };
+      const { data, error } = await sb.from('vinculos_professoras').select('teacher_id, teachers(*)')
+        .eq('auth_user_id', uid).order('created_at').limit(1);
+      return { data: data && data[0] ? data[0] : null, error };
+    };
+    let { data: vinculo, error } = await buscarVinculo();
     if(!error && !vinculo && await vincularPendenteProf()){
-      ({ data: vinculo, error } = await sb.from('vinculos_professoras').select('teacher_id, teachers(*)').maybeSingle());
+      ({ data: vinculo, error } = await buscarVinculo());
     }
     if(error){
       document.getElementById('modalBody').innerHTML = renderErroConexao('resolveProfSession()', 'sairProfessora()', error);
@@ -3192,9 +3201,11 @@
     if(selectedChildId) selectChild(selectedChildId);
   }
 
-  function editChild(id){
+  async function editChild(id){
     editingChildId = id;
-    renderChildrenSectionAsync();
+    await renderChildrenSectionAsync();
+    const campo = document.getElementById('newChildName');
+    if(campo){ campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); campo.focus(); }
   }
 
   function renderChildListItems(filtro){
@@ -3258,9 +3269,12 @@
     `;
   }
 
-  function editTeacher(id){
+  async function editTeacher(id){
     editingTeacherId = id;
-    renderTeachersSectionAsync();
+    await renderTeachersSectionAsync();
+    // o formulário fica no topo e a lista embaixo: leva a tela até ele
+    const campo = document.getElementById('newTName');
+    if(campo){ campo.scrollIntoView({ behavior: 'smooth', block: 'center' }); campo.focus(); }
   }
 
   async function addTeacher(){
