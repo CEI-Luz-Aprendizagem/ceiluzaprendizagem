@@ -1,7 +1,7 @@
 // Service Worker simples — permite "Adicionar à tela inicial" e guarda
 // a casca do site (HTML/CSS) em cache para abrir mais rápido depois.
 // Os dados (crianças, rotinas, fotos) sempre vêm do Supabase, nunca do cache.
-const CACHE_NAME = 'cei-luz-aprendizagem-v1';
+const CACHE_NAME = 'cei-luz-aprendizagem-v2';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -25,6 +25,6 @@ self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('supabase.co')) return;
 
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });

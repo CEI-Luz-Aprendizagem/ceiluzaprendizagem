@@ -39,6 +39,30 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Luz Aprendizagem">
+<script>
+// MODO APLICATIVO: as páginas professora.html, pais.html e admin.html abrem este site já na tela de login
+// da área, sem o site público por trás. Aqui também trocamos nome, ícone e manifesto, pra que "Instalar"
+// (Android) ou "Adicionar à Tela de Início" (iPhone) crie um aplicativo próprio de cada área.
+(function(){
+  var q = new URLSearchParams(location.search);
+  var app = (q.get('app') || q.get('painel') || '').toLowerCase();   // "painel" = atalhos antigos
+  var cfg = {
+    professora: { manifesto:'manifest-professora.json', icone:'icons/apple-touch-icon-prof.png', favicon:'icons/icon-192-prof.png', titulo:'Professoras — CEI Luz Aprendizagem', nome:'Professoras', cor:'#0E5C73' },
+    pais:       { manifesto:'manifest-pais.json', icone:'icons/apple-touch-icon.png', favicon:'icons/icon-192.png', titulo:'Famílias — CEI Luz Aprendizagem', nome:'Luz Famílias', cor:'#F2A93E' },
+    admin:      { manifesto:'manifest-admin.json', icone:'icons/apple-touch-icon-admin.png', favicon:'icons/icon-192-admin.png', titulo:'Administração — CEI Luz Aprendizagem', nome:'Administração', cor:'#22394A' }
+  }[app];
+  if(!cfg) return;
+  var h = document.documentElement; h.classList.add('modo-app'); h.setAttribute('data-app', app);
+  function set(sel, attr, val){ var e = document.querySelector(sel); if(e) e.setAttribute(attr, val); }
+  set('link[rel="manifest"]', 'href', cfg.manifesto);
+  set('link[rel="apple-touch-icon"]', 'href', cfg.icone);
+  set('link[rel="icon"]', 'href', cfg.favicon);
+  set('meta[name="theme-color"]', 'content', cfg.cor);
+  set('meta[name="apple-mobile-web-app-title"]', 'content', cfg.nome);
+  var r = document.createElement('meta'); r.name = 'robots'; r.content = 'noindex, nofollow'; document.head.appendChild(r);
+  document.title = cfg.titulo;
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 <style>
@@ -363,6 +387,29 @@
 
   /* ===== PAINEL DA PROFESSORA: menu lateral + seções ===== */
   .modal.modal-prof{max-width:980px; padding:0; overflow:hidden; height:min(88vh, 780px);}
+  /* o miolo da janela precisa ter a altura da janela, senão o painel cresce e o conteúdo é cortado sem rolar */
+  .modal.modal-prof #modalBody{height:100%; min-height:0;}
+  .modal.modal-prof .modal-close{z-index:20;}  /* o X precisa ficar por cima da barra do topo */
+
+  /* ===== MODO APLICATIVO (professora.html, pais.html, admin.html): sem o site público por trás ===== */
+  html.modo-app body > *:not(#modal):not(#adminApp):not(script){display:none !important;}
+  html.modo-app body{background:var(--cream);}
+  html.modo-app .modal-overlay{background:var(--cream); backdrop-filter:none; flex-direction:column; justify-content:flex-start; align-items:center; overflow-y:auto; padding:0 16px 40px;}
+  html.modo-app .modal-overlay.prof-aberto{padding:0; overflow:hidden;}
+  html.modo-app .modal-close{display:none;}
+  html.modo-app .modal{box-shadow:0 18px 50px rgba(34,57,74,.14); max-height:none; overflow:visible;}
+  html.modo-app .modal.modal-prof{max-width:none; width:100%; height:100%; flex:1 1 auto; border-radius:0; box-shadow:none; overflow:hidden;}
+  html.modo-app .prof-topbar, html.modo-app .prof-view{max-width:980px;}
+  .app-cabecalho, .app-rodape{display:none;}
+  html.modo-app .app-cabecalho{display:flex; align-items:center; gap:14px; margin:max(4vh, 22px) 0 16px; width:100%; max-width:380px;}
+  html.modo-app .app-cabecalho img{border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,.12);}
+  html.modo-app .app-cabecalho b{display:block; font-family:'Fredoka'; font-size:19px; color:var(--ink);}
+  html.modo-app .app-cabecalho span{display:block; font-size:13.5px; color:var(--ink-soft); font-weight:700; margin-top:2px;}
+  html.modo-app .app-rodape{display:block; width:100%; max-width:380px; margin-top:18px; text-align:center; font-size:13px; color:var(--ink-soft);}
+  html.modo-app .app-rodape a{color:var(--ink-soft); text-decoration:underline; text-underline-offset:3px;}
+  html.modo-app .app-rodape p{margin:0 0 12px; line-height:1.45;}
+  html.modo-app .app-rodape #appInstalar:not(:empty){margin-bottom:14px;}
+  html.modo-app .modal-overlay.prof-aberto .app-cabecalho, html.modo-app .modal-overlay.prof-aberto .app-rodape{display:none;}
   .prof-app{display:grid; grid-template-columns:230px minmax(0,1fr); grid-template-rows:minmax(0,1fr); height:100%; position:relative;}
   .prof-menu{background:var(--cream-deep); border-right:1px solid var(--line); padding:22px 14px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0;}
   .prof-menu-head{display:flex; align-items:center; gap:10px; padding:4px 8px 16px; border-bottom:1px solid var(--line); margin-bottom:10px;}
@@ -994,7 +1041,7 @@
       <button id="navTema" onclick="setAdminSection('tema')">Tema do site</button>
     </nav>
     <div class="admin-side-bottom">
-      <button onclick="exitAdmin()">← Voltar ao site</button>
+      <button onclick="voltarAoSite()">← Voltar ao site</button>
       <button onclick="adminLogout();">Sair da administração</button>
     </div>
   </aside>
@@ -1497,14 +1544,69 @@
   function esquecerArea(){ try{ sessionStorage.removeItem(CHAVE_AREA); sessionStorage.removeItem('ceila_prof_secao'); }catch(e){} }
   function areaLembrada(){ try{ return sessionStorage.getItem(CHAVE_AREA); }catch(e){ return null; } }
 
+  // ===== MODO APLICATIVO (professora.html / pais.html / admin.html) =====
+  // Nesse modo não existe "site por trás": fechar a janela leva de volta à tela inicial da área.
+  const APP_MODO = document.documentElement.getAttribute('data-app') || '';
+  function abrirAreaDoApp(){
+    if(APP_MODO === 'professora') openProfessoraModal();
+    else if(APP_MODO === 'pais') openParentModal();
+    else if(APP_MODO === 'admin') openAdminModal();
+  }
+  function voltarAoSite(){
+    if(APP_MODO){ window.location.href = 'index.html'; return; }
+    exitAdmin();
+  }
+  // Monta o cabeçalho (logo + nome da área) e o rodapé (instalar o app, ir pro site) em volta da tela de login.
+  let eventoInstalar = null;
+  function montarCascaAplicativo(){
+    if(!APP_MODO) return;
+    const rotulos = { professora:'Área das professoras', pais:'Área das famílias', admin:'Administração' };
+    const icones = { professora:'icons/icon-192-prof.png', pais:'icons/icon-192.png', admin:'icons/icon-192-admin.png' };
+    const ov = document.getElementById('modal'), box = document.getElementById('modalBox');
+    const cab = document.createElement('div');
+    cab.className = 'app-cabecalho'; cab.id = 'appCabecalho';
+    cab.innerHTML = `<img src="${icones[APP_MODO]}" alt="" width="52" height="52"><div><b>CEI Luz Aprendizagem</b><span>${rotulos[APP_MODO]}</span></div>`;
+    ov.insertBefore(cab, box);
+    const rod = document.createElement('div');
+    rod.className = 'app-rodape'; rod.id = 'appRodape';
+    rod.innerHTML = `<div id="appInstalar"></div><a href="index.html">← Ir para o site da escola</a>`;
+    ov.appendChild(rod);
+    prepararInstalacao();
+  }
+  function prepararInstalacao(){
+    const caixa = document.getElementById('appInstalar');
+    if(!caixa) return;
+    const instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    if(instalado) return;
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if(ios){
+      caixa.innerHTML = `<p>📲 <b>Para ter este app na tela inicial:</b> toque em <b>Compartilhar</b> (o quadrado com a seta) e depois em <b>Adicionar à Tela de Início</b>.</p>`;
+    }
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      eventoInstalar = e;
+      caixa.innerHTML = `<button class="btn btn-sun btn-sm" onclick="instalarApp()">📲 Instalar aplicativo</button>`;
+    });
+    window.addEventListener('appinstalled', () => { caixa.innerHTML = ''; });
+  }
+  async function instalarApp(){
+    if(!eventoInstalar) return;
+    eventoInstalar.prompt();
+    try{ await eventoInstalar.userChoice; }catch(e){}
+    eventoInstalar = null;
+    const caixa = document.getElementById('appInstalar');
+    if(caixa) caixa.innerHTML = '';
+  }
+
   function closeModal(){
     esquecerArea();
     ajustarModalProf(false);
     toggleModal(false);
+    if(APP_MODO) abrirAreaDoApp();
     document.getElementById('modalBox').classList.remove('modal-wide');
   }
   document.getElementById('modal').addEventListener('click', function(e){
-    if(e.target === this) closeModal();
+    if(e.target === this && !APP_MODO) closeModal();
   });
 
   function setWide(wide){
@@ -2691,9 +2793,9 @@
             <button class="prof-hamb" onclick="alternarMenuProf()" aria-label="Abrir menu">☰ Menu</button>
             <h3 id="profTitulo">Aluno(a)s</h3>
           </div>
-          <section class="prof-view" data-secao="alunos">${viewAlunos}</section>
-          <section class="prof-view" data-secao="cadastro">${viewCadastro}</section>
-          <section class="prof-view" data-secao="rotina">${viewRotina}</section>
+          <div class="prof-view" data-secao="alunos">${viewAlunos}</div>
+          <div class="prof-view" data-secao="cadastro">${viewCadastro}</div>
+          <div class="prof-view" data-secao="rotina">${viewRotina}</div>
         </div>
       </div>
     `;
@@ -2888,6 +2990,7 @@
     await sb.auth.signOut();
     adminLogged = false;
     exitAdmin();
+    if(APP_MODO) abrirAreaDoApp(); // no aplicativo, depois de sair volta a tela de login
   }
 
   // ===== Administração: tela cheia =====
@@ -3751,12 +3854,12 @@
               : `🟢 Matrícula ativa`}
           </div>
         </div>
-        <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+        ${leitura ? `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
           ${child.status !== 'egressa'
             ? `<button class="btn btn-ghost btn-sm" onclick="marcarSaidaCrianca('${child.id}')">Marcar saída da escola</button>`
             : `<button class="btn btn-ghost btn-sm" onclick="desfazerSaidaCrianca('${child.id}')">Desfazer saída (voltou a ser ativa)</button>`}
           <button class="btn btn-danger btn-sm" onclick="removeChild('${child.id}')">Remover criança</button>
-        </div>
+        </div>` : ''}
       </div>
       ${periodoAviso}
       ${leitura ? '' : (ehReforco
@@ -4177,6 +4280,7 @@
   }
 
   // ===== Init =====
+  montarCascaAplicativo();
   if(SUPABASE_URL.includes('COLE_AQUI') || SUPABASE_ANON_KEY.includes('COLE_AQUI')){
     const warn = document.createElement('div');
     warn.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:#22394A;color:#fff;text-align:center;font-size:12.5px;padding:12px 16px;';
@@ -4194,7 +4298,10 @@
     });
 
     const isAppInstalado = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    if(isAppInstalado){
+    if(APP_MODO){
+      // aplicativo da área: abre direto na tela dela (login, ou o painel se a pessoa já estiver logada)
+      if(APP_MODO === 'admin') prontoAdmin.then(abrirAreaDoApp); else abrirAreaDoApp();
+    } else if(isAppInstalado){
       const painel = new URLSearchParams(window.location.search).get('painel');
       if(painel === 'professora') openProfessoraModal();
       else if(painel === 'admin') openAdminModal();

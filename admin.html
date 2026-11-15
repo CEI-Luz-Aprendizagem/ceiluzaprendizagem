@@ -19,14 +19,15 @@
     background:#FFF9F0; font-family:'Nunito',sans-serif; text-align:center;
   }
   p{color:#5C7484; font-size:14px;}
+  a{color:#5C7484;}
 </style>
 </head>
 <body>
-  <p>Abrindo o painel da administração...</p>
+  <p>Abrindo a administração...<noscript><br><a href="index.html?app=admin">Toque aqui para abrir</a></noscript></p>
   <script>
-    // Essa página existe só pra dar um ícone/atalho próprio ao administrador.
-    // Ela leva direto pro site principal, já no login certo.
-    window.location.replace('index.html?painel=admin');
+    // Esta página existe só pra ter um endereço curto e um ícone próprio.
+    // Ela abre o aplicativo da área direto na tela de login.
+    window.location.replace('index.html?app=admin');
   </script>
 </body>
 </html>
