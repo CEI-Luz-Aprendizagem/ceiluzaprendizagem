@@ -1852,7 +1852,7 @@
       ({ data: vinculos, error } = await sb.from('vinculos_pais').select('child_id, parentesco, children(*)').order('created_at'));
     }
     if(error){
-      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveParentSession()', 'sairAreaDosPais()');
+      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveParentSession()', 'sairAreaDosPais()', error);
       return;
     }
     if(!vinculos || !vinculos.length){
@@ -2620,10 +2620,12 @@
   }
 
   // Falha ao consultar o banco (sem internet, modo avião, sistema fora do ar): NÃO é falta de código.
-  function renderErroConexao(tentarJs, sairJs){
+  function renderErroConexao(tentarJs, sairJs, erro){
+    const motivo = erro && erro.message ? `<p class="adm-child-meta" style="margin:-6px 0 14px;word-break:break-word;">Detalhe técnico: ${esc(String(erro.message).slice(0,160))}</p>` : '';
     return `
       <h3>Não consegui carregar seus dados</h3>
       <p class="sub">Verifique se o celular está com internet (o modo avião precisa estar desligado) e tente de novo. Se continuar, avise a escola.</p>
+      ${motivo}
       <button class="btn btn-sun" style="width:100%;" onclick="${tentarJs}">Tentar de novo</button>
       <button class="adm-logout" style="margin-top:12px;" onclick="${sairJs}">Sair</button>
     `;
@@ -2667,7 +2669,7 @@
       ({ data: vinculo, error } = await sb.from('vinculos_professoras').select('teacher_id, teachers(*)').maybeSingle());
     }
     if(error){
-      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveProfSession()', 'sairProfessora()');
+      document.getElementById('modalBody').innerHTML = renderErroConexao('resolveProfSession()', 'sairProfessora()', error);
       return;
     }
     if(!vinculo || !vinculo.teachers){
@@ -3109,6 +3111,19 @@
           <button class="btn btn-ghost btn-sm" onclick="setAdminSection('teachers')">Cadastrar professora</button>
           <button class="btn btn-ghost btn-sm" onclick="setAdminSection('galeria-pais')">Postar foto para os pais</button>
         </div>
+      </div>
+      <div class="adm-card">
+        <h4 style="font-size:15px;margin-bottom:4px;">🔑 Esqueceu a senha? Definir senha temporária</h4>
+        <p class="adm-child-meta" style="margin-bottom:12px;">Para professora ou responsável que esqueceu a senha. Digite o e-mail da conta, gere uma senha temporária e passe para a pessoa pelo WhatsApp. Depois de entrar, ela troca por uma própria em "Alterar minha senha".</p>
+        <label>E-mail da conta</label>
+        <input type="email" id="senhaTempEmail" placeholder="email@exemplo.com" autocomplete="off">
+        <label>Senha temporária</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="senhaTempValor" placeholder="mínimo 8 caracteres" autocomplete="off" style="flex:1;">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="gerarSenhaTemporaria()">Gerar</button>
+        </div>
+        <button class="btn btn-sun btn-sm" style="margin-top:12px;" onclick="definirSenhaTemporaria()">Definir senha</button>
+        <p class="adm-child-meta" id="senhaTempStatus" style="margin-top:10px;"></p>
       </div>
       <div class="adm-card">
         <h4 style="font-size:15px;margin-bottom:4px;">Espaço de armazenamento</h4>
@@ -3622,6 +3637,30 @@
     const { error } = await sb.rpc('gerar_convite_crianca', { p_child: childId, p_tipo: tipo, p_para_quem: paraQuem || null });
     if(error){ alert('Erro ao gerar o código: ' + error.message); return; }
     selectChild(childId);
+  }
+
+  function gerarSenhaTemporaria(){
+    const letras = 'abcdefghijkmnpqrstuvwxyz', nums = '23456789';
+    const sorteio = (conj, n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), x => conj[x % conj.length]).join('');
+    document.getElementById('senhaTempValor').value = 'Luz' + sorteio(letras, 4) + sorteio(nums, 3);
+  }
+
+  async function definirSenhaTemporaria(){
+    const email = document.getElementById('senhaTempEmail').value.trim();
+    const senha = document.getElementById('senhaTempValor').value;
+    const st = document.getElementById('senhaTempStatus');
+    if(!email){ st.textContent = 'Digite o e-mail da conta.'; return; }
+    if(senha.length < 8){ st.textContent = 'A senha precisa ter pelo menos 8 caracteres. Toque em "Gerar".'; return; }
+    if(!confirm('Definir esta senha temporária para ' + email + '? A senha antiga deixa de funcionar.')) return;
+    st.textContent = 'Salvando...';
+    const { error } = await sb.rpc('admin_definir_senha', { p_email: email, p_senha: senha });
+    if(error){
+      st.textContent = /Could not find the function|schema cache/i.test(error.message)
+        ? 'Falta rodar o arquivo novo-redefinir-senha.sql no Supabase (uma vez só).'
+        : 'Erro: ' + error.message;
+      return;
+    }
+    st.textContent = 'Pronto! Senha temporária definida. Passe para a pessoa: e-mail ' + email + ' · senha ' + senha;
   }
 
   async function gerarConviteProfessora(teacherId){
